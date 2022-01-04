@@ -1,0 +1,21 @@
+Direct mapped caches are not very efficient if only a small amount of memory is
+needed. A memory location can only ever be cached in one cache block.
+
+Fully associative caches attempt to solve this. Fully associative blocks
+let a memory location be cached in any cache block; this is also not very good, since the tag must now be the whole address, and searching over all cache blocks
+is much worse than searching through 1/1024 of the cache blocks. Possibly for extremely small caches this is worth it, (like CPU registers, in a way).
+
+The compromise is an n-way (set) associative cache. A cache of (eg) 1MB can be split up into 4 2B sets or a 8B direct map, so
+
+set size 4                vs direct mapped
+
+possible block
+    0 4 8 C 0 4 8 C 0
+    1 5 9 D 1 5 9 D 1
+    2 6 A E 2 6 A E 2
+    3 7 B F 3 7 B F 3
+set 0 1 2 3 0 1 2 3 0 |  block  0 1 2 3 4 5 6 7 0
+mem 0 1 2 3 4 5 6 7 8 |  mem    0 1 2 3 4 5 6 7 8 
+
+The tag must hold the high order bits, as well as enough bits to identify
+a block in a set.

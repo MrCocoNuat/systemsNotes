@@ -1,0 +1,61 @@
+Exceptions are one way for control flow to be altered, usually unexpectedly
+
+TRAP sets mode to kernel (ring 0). It is caused by an exception, sometimes
+intentional by the OS, other times on accident (n/0), and other times
+maliciously. By spec, user code does not execute after TRAP. Only the
+predefined jump table (interrupt vectors) can run afterwards unless the OS
+is changed maliciously. OS calls TRAP for syscalls since some need ring 0.
+
+Synchronous events are caused by instructions:
+Traps are intentional (syscall fork)
+Faults are not intentional, but are recoverable (unvirtualised page fault)
+Aborts are not intentional and stop the program (illegal mem access)
+
+Asynchronous events (interrupts) are not caused by interruptions:
+pin-change interrupts
+keyboard interrupts (^C)
+disk read interrupts
+network interrupts .....
+
+examples:
+user program calls usermode fopen(), which traps with number (syscallXXX),
+processor switches to kernelmode and jumps to OS's open().
+user program access virtualmem, but the pagetable doesn't have an entry.
+OS generates the map, reserves new physical memory, and continues.
+user program access 0x00000000, but the pagetable doesn't have an entry.
+OS sees access to illegal address, sends SIGSEGV and program terminates
+with segmentation fault.
+
+The OS scheduler makes sure that every process (program running right now)
+gets its CPU time. Memory is also managed by MMU, and registers reloaded.
+
+Important syscalls:
+fork() creates a clone of the process that called it (as a child process)
+exit() terminates the process, in a zombie state to be reaped
+wait()/waitpid() wait for and reap children
+exec()/execve() overwrite program with a new one
+
+A stupidly basic shell can be written with these 4:
+
+while(true){
+	display_prompt("$");
+	read_command(command);
+	if (fork() != 0) waitpid(...);
+	else execve(command);
+}
+
+fork() in a process with no child is 0, else positive. It is the PID of the
+child that was created (PID1 is init, PID0 a null process, or maybe scheduler).
+
+When fork() is called, the new one is created in the middle of fork, after
+the creation of a process, but before it sends a return value, or the CPID.
+
+Forever, the root shell creates children, waits for them to zombie,
+then reaps them. The child shell replaces itself with the command and
+runs until completion, exit() zombies itself. In this way the shell only
+needs to know how to print, read, and syscall. Nothing else.
+If the root shell ever exits or replaces itself, you are screwed. Restart.
+If the boot does not start up a shell anymore you are really screwed.
+
+Removing waitpid(...) allows background tasks to run while the child is
+running (&).

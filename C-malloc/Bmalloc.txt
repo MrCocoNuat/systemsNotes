@@ -1,0 +1,74 @@
+The heap itself is "managed" by malloc() and free() and friends
+
+(The heapsize is managed by the OS, for when malloc() runs out and syscalls)
+
+malloc() deals in virtual memory,
+
+malloc() is complicated:
+random ordering - alloc p1, p2, free p1. Free memory before p2!
+uses only heap
+alignment - all pointers aligned to maximum requirement
+cannot move allocated blocks - cannot defrag
+maximal throughput - waste minimum time in freeing
+maximal mem utilization = waste minimum memory in allocating
+
+internal fragmentation is wasted padding - inside a region
+external fragmentation is wasted space outside a region
+external fragging is impossible to predict in all cases. Heuristically,
+try to keep a few large pieces of mem rather than many small pieces
+
+implementation requires smart
+organization
+placement of allocations
+splitting previously free blocks
+coalescing newly free blocks
+
+
+Use an implicit free list, which has blocks that look like
+
+| size of this block | alloced? | data | padding |
+
+the size value also works as a pointer to the next block, naturally
+
+A memory location could look like
+
+|5FREE| | | | |3FREE| | |4ALLOC| | | |5FREE| | | | |3FREE| | |
+
+each block points to the next by its size value
+
+(An explicit free list would only link free blocks, each block carries extra
+pointers to the next free block instead of the next block)
+(Segregated lists split up the free blocks and the alloced blocks into different
+lists)
+
+
+Placement solutions
+First fit = place in the first big enough block
+Next fit = place in the first big enough block, starting from the prev block
+Best fit = place in the smallest big enough block
+
+Splitting solutions
+Give full = mark the whole block as alloced, internal fragging
+Give needed = split up the block into alloced and the remaining free
+
+If the memory location gets a call firstfit giveneeded malloc(2):
+|2ALLOC| |3FREE| | |4ALLOC| | | | ....
+
+coalescing solutions
+only free = only mark a block as free, no coalescing, false fragmentation
+     a linear pass of the full list can later coalesce everything possible
+     but is lots of extra time once in a while
+immediate = upon freeing check if the next block is also free, then coalesce
+     works with minimum overhead?
+Knuth's boundary tags = not only check next but also prev block,
+     requires adding a footer byte to a block, identical to the header,
+     this now works for all four cases:
+
+     ||ALLOC||NEWFREE||FREE || checks previous, finds next, coalesces next
+     ||FREE ||NEWFREE||ALLOC|| same but prev
+     ||ALLOC||NEWFREE||ALLOC|| cant find free
+     ||FREE ||NEWFREE||FREE || finds frees, coalesces both
+
+modern languages manage the freeing part by themselves (auto gc, super
+complicated schemes like marksweep) and higher level languages will even do the
+allocation for you

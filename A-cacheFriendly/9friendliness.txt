@@ -1,0 +1,6 @@
+Cache-friendly code to maximize hits is important.
+E.g. Accessing a 2D array is probably better done rows first.
+This is because A[0,0] is probably in the same block as A[0,1]. but
+probably not with A[1,0].
+
+This is just a very simple example, though.

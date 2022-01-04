@@ -1,0 +1,99 @@
+Programs cannot all start at memory address 0x00000000.
+When multiple programs should run at once, virtual (logical) memory is required.
+
+Old multiprogramming was with fixed number of tasks, with physical memory
+partitioned into unchanging sets that were given out to each program.
+
+Later swapping was introduced. Contiguous sets of memory given to processes
+could now be moved around, grown, shrunk, or even moved to disk temporarily
+to be restored later.
+
+Later, paging was introduced to alleviate fragmentation of memory.
+Physical mem was divided into frames, and logical mem into pages, with
+one page fitting into one frame. Now a process could receive a number of
+pages, and they would be mapped (possibly noncontiguously) to
+frames. If pages were small enough, there would be only negligible memory
+wasted.
+
+The OS has to maintain a page table, for determining where each page was
+mapped to.
+
+Now, many progrsms can all start their virtual read-only memory at 0x400000
+and stack at 0xFFFFFF, and each will be a separate physical address. Shared
+object files can be stored just once and mapped to by multiple pages.
+
+The problem is that a lookup in the page table literally doubles memory access
+time  on cache miss. Fix it with another cache, the Translation Lookaside Buffer.
+
+Even more complex paging schemes allow virtual memory to exceed physical memory,
+as well as no longer assuming that the program will use every single virtual
+memory address all the time, so sometimes it can be stored solely on disk. Page
+faults arise when a virtual page that is not resident in memory is accessed,
+this is just like cache.
+
+Cache block is usually few decabytes, pages few kilobytes.
+
+Virtual memory also serves as isolation. By managing the permissions for read
+and write, the process can be cut off from either function by the MMU. The same
+physical address can be controlled in different ways.
+
+
+memory process:
+CPU sends virtual address to MMU
+MMU lookups the address in TLB
+TLB returns a PT entry
+    If TLB hit:
+    MMU lookups the physical address in cache
+    If TLB miss:
+    The OS can kill the process for accessing bad memory,
+    MMU lookups the virtual address in Page Table
+    MMU can evict an entry in the TLB
+    MMU lookups the physical address in cache
+
+
+Should the cache be organized by physical or virtual address?
+Virtual cache can be looked up before TLB is done
+Physical cache doesn't need aliasing afterwards, e.g. proc1mem3FA != proc2mem3FA
+
+Usually the TLB is constructed with a very high associativity; it is so small
+that such luxuries are afforded for a higher hit rate.
+
+Still, however, each page table must have space for every single logical page,
+which might possibly range from 0x400000 to 0xFFFFFF in x86. The exceeding
+majority of those logical pages will be completely junk forever, since few
+programs use that much memory. Worse, such a page table might take 256GB.
+
+Just like how multilevel cache can solve residency problems in cache,
+multilevel page tables help with page tables.
+
+e.g. if 100 page table entries must be potentially stored, partition them into
+groups of 10 and only create the group of 10 if they are not all null.
+The set of residencies {0,A,21,33} means that the subtable for 0X is stored as
+well as for 2X and 3X, but not 1X at all.
+
+
+End to end example:
+
+each reference is to a byte
+Let page size = 64B, or offset is 6b
+A virtual address 14b - there are 256 virtual pages
+A physical address 12b - there are 64 physical pages
+
+the page table contains entries in the form:
+|1    |8          |6             |
+valid virpage num  physpage num
+
+the page table looks like
+VPN PPN Valid
+00 28 1
+01 ?? 0
+02 33 1
+...
+0E ?? 0
+0F 0D 1
+
+To translate virtual address 0234, the high8 are 08 and the low6 offset is 34,
+consult the TLB, if it hits the MMU returns cached address 4f4.
+if it misses and the OS does not kill, MMU looks at full page table,
+virtual page 08 is valid, physical page = 13. The physical address has high6
+13 and low6 offset 34, so it is 4f4. MMU then evicts TLB entry.

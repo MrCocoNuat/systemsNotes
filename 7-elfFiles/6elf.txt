@@ -1,0 +1,107 @@
+All .o .out .so files are elfs
+
+elf:
+
+	elf header
+
+	segment
+
+	.text (machine instructions)
+
+	.rodata (read only, like strings)
+
+	.data (C global and statics)
+
+	.bss (unitialized globals, zero-filled)
+
+	.symtab (linker's symbol table)
+
+	.rel.text (relocation info for .text for linking)
+
+	.rel.data (same for .data)
+
+	.debug (for debug)
+	.line
+	.srtab
+
+
+Linker's symbol table contains
+	 Global symbols: defined in this module, nonstatic functions and nonstatic globals
+	 External symbols: referenced but not defined in this module
+	 Local symbols: Defined and referenced in this module only, static functions and extern variables
+
+	 None of these can be placed on the stack (they must keep values) unlike local variables in a function, which are in a stackframe
+
+Strong and weak symbols:
+       External definitions are strong,
+       external declarations and uninit globals are weak
+
+       More than one strong of one name gives "multiply defined" linktime error
+       One strong and many weak, the weaks are resolved  to the strong
+       No strong and many weak, one weak is chosen (unpredictably?)
+
+       e.g.
+       file 1			file 2
+
+       int x;			int x = 7;	the second &x is the real one
+       f1(){}			f2(){}		i.e. address of x is the 2nd one
+
+       int x = 7;		double x;	VERY BAD! &x refers to the first
+       int y = 5;		       		&x, but modifying whatever is
+       	       					there as double can overwrite y!
+
+       f1(){}	                f1(){}		Link time error                                                      
+
+How to store static libraries, as .a archives of .o files?
+    One way:
+    	LinkThisForLiterallyEverything.a - way too big!
+    Another:
+	f1.a, f2.a, f3.a, f4.a, ... - way too many!
+    Finally:
+	LinkThisForA.a, ... with each .a holding an index of which funcs
+	are included, and where they are, which linker uses to only
+	reference whatever are needed
+
+
+if callf.o relies on archive libf.a, better call linker like:
+   cc callf.o libf.a
+otherwise linker sees libf.a, sees no reason to keep it, and tosses it.
+because linker is a one-pass, flagging unresolved references and searching
+for their definitions afterwards.
+
+As for relocation, linker just makes one big .text and .data out of all the
+object elfs
+
+
+
+
+Recall the memory structure:
+
+stack VVV
+
+
+Shared libs ^^^
+
+
+Heap ^^^
+(.data)
+(.text)
+
+What are shared libs?
+static libs aren't that great:
+e.g. every single a.out needs printf()
+fixing printf() requires everyone to relink the new one
+
+shared libs are not linked at linktime but during load or runtime
+linker relocates and gives the symbol table entries that are needed
+Loader sees that the linker marked object file as "needs shared libs"
+
+Sometimes, two programs relying on the same shared lib can hook the exact
+SAME location in memory, requiring position independent code and translation
+of memory locations
+
+e.g. jg $0x10000000 is not position independent, setting %rip to 10000000
+
+e.g. reljg -0xC is position independent, since -0xC is a relative offset,
+subtracting C from %rip
+(relgj is not a real instruction in x86)

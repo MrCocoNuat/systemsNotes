@@ -1,0 +1,77 @@
+Ideal memory is big, fast, cheap
+
+DRAM is big, cheap, slow, and needs refreshes
+relies on a capacitor charging to Vcc/2 or -Vcc/2 through a fet
+
+ Bit Line
+    │    
+    └───┤ │
+          │
+ ┌────>─┤ │
+ ▼        │
+    ┌───┤ └──── Word Line
+    │
+  ──┴── Bit capacitor
+  ──┬──
+    │
+    ▼
+SRAM is fast, cheap, but small
+
+  ----
+==|SR|-- 4T or 6T designs (NAND NAND)
+  ----
+  
+forget about big and fast, nothing's faster than c
+
+mixing DRAM and SRAM in multilevel memory is a good way to make
+big and fast volatile memory
+
+Call the DRAM memory, and the SRAM cache.
+There are really many levels of SRAM cache, each with different grades of size and speed.
+
+The cache should be populated so that memory block N might be found in N%C, where
+C is the cache size. This is so that consecutive memory blocks, commonly needed
+simultaneously (like a big array), will never conflict with each other.
+This is for spatial locality; when an address is referenced, it is likely nearby addresses are referenced.
+
+A 8-block cache can be stored like this:
+Each word is 4 bytes and each cache block is one word
+
+Address Valid?    Tag    Data
+000      0       junk    junk
+001      1      00000    something
+010      1      10101    something
+011      0       junk    junk
+100      1      00110    something
+101 ...
+110 ...
+111 ...
+
+To look up memory location 1101010011, find the word number (11010100), then its cache address (100).
+It is not junk, but the tag in the cache (00110) does not match the tag of the address (11010).
+This is a cache miss, so look to main memory for the data.
+Looking up memory location 1001001101, looks at cache block (011) which is junk, so a miss. Go to memory.
+Looking up memory location 0000000111, looks at cache block (001) which has the correct tag, cache hit!
+
+At startup the data inside a latch is undefined, so all cache blocks are invalid.
+
+When a cache miss happens, there is a choice to either preserve the cache or replace the cache block.
+In case the cache block is invalid, there is no conflict and the cache block should be replaced.
+In case the block is valid, there is conflict, but usually CPUs will choose to replace anyway.
+This is for temporal locality; when an address is referenced, it will probably be referenced again soon.
+
+When replacing the cache block, better make sure that what is in the old memory location is up to date,
+so safe to delete in cache. This is accomplished by either policy in write hits or read misses.
+If write hits are safe, then every time a cache write hits, the memory is also written to; in this way
+the memory is always updated with cache and safe to overwrite.
+If read misses are safe, then every time a cache read misses, the memory is updated with the newest
+data that was in the cache, so it is updated with cache and safe to overwrite.
+If neither is safe, then the memory may be copied to cache, then the cached data is changed, then the
+cached data is replaced in a cache miss without writing the changes back to memory!
+
+
+Modern caches are multiword, giving even better spatial locality (consecutive words may all be in cache,
+and now they definitely are). To find memory address 10010100|0110|10|11 as a Tag|Block|Word|Byte, look
+in cache block 0110 for tag 10010100, then pick out the 10 word inside that block and the 11 byte in that.
+
+

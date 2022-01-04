@@ -1,0 +1,59 @@
+from address 0: Unused memory,
+then read-only (consts, unchanging libraries),
+then lifetime read-write data (statics, globals),
+then heap (malloc), shared libraries, stack
+
+C source compiles into asm .s,
+asm assembled into object files .o,
+object files linked with static libraries into an exec (whatever, custom a.out)
+execs runtime linked with (.so .dll) shared object files by "loader" to run
+
+linkers permit standard libraries to be stored once, not in every obj file
+linkers resolve conflicts/external references, and relocate relative addresses
+
+consider:
+
+main.c
+int x = 10;
+void f(void);
+int main(void){
+    f();
+}
+
+f.c
+extern int x;
+void f(void){
+     int y = 20;
+}
+
+Does f come first in memory, or does main? Undecidable, since neither c file
+knows how large the other function is. Assign relative addresses instead.
+main has no idea where f is, f has no idea where x is. Resolve these external
+references.
+
+So, compile f and main with relative addresses, then the linker will calculate 
+absolute addresses for them by adding the relative addess to a relocation cons
+= the sum of all the lengths of the preceding modules
+
+e.g.
+
+----------
+Module1
+----------
+
+Module2
+00fa relative: jmp f, absolute = M1+00fa
+----------
+Module3
+----------
+
+
+Module4
+
+00c2 relative: f, absolute = M1+M2+M3+00c2
+
+----------
+
+Easiest to do in two passes:
+first, order up the modules and find absolute addresses for every symbol (eg f)
+then second, replace the symbols with their absolute addresses

@@ -1,0 +1,32 @@
+from address 0: Unused memory,
+then read-only (consts, unchanging libraries),
+then lifetime read-write data (statics, globals),
+then heap (malloc), shared libraries, stack
+
+C source compiles into asm .s,
+asm assembled into object files .o,
+object files linked with static libraries into an exec (whatever, custom a.out)
+execs dynamically linked with "loader" to run
+
+linkers permit standard libraries to be stored once, not in every obj file
+linkers resolve conflicts/external references, and relocate relative addresses
+
+consider:
+
+main.c
+int x = 10;
+void f(void);
+int main(void){
+    f();
+}
+
+f.c
+extern int x;
+void f(void){
+     int y = 20;
+}
+
+Does f come first in memory, or does main? Undecidable, since neither c file
+knows how large the other function is. Assign relative addresses instead.
+main has no idea where f is, f has no idea where x is. Resolve these external
+references.

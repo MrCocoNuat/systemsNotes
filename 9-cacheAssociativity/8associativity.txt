@@ -1,0 +1,34 @@
+Direct mapped caches are not very efficient if only a small amount of memory is
+needed. A memory location can only ever be cached in one cache block.
+
+Fully associative caches attempt to solve this. Fully associative blocks
+let a memory location be cached in any cache block; this is also not very good, since the tag must now be the whole address, and searching over all cache blocks
+is much worse than searching through 1/1024 of the cache blocks. Possibly for extremely small caches this is worth it, (like CPU registers, in a way).
+
+The compromise is an n-way (set) associative cache. A cache of (eg) 16B can be split up into 4 4W sets or a 16W direct map, so
+
+set size 4, 16 blocks vs direct mapped, 16 blocks
+
+tag 0 0 0 0 1 1 1 1 2
+possible block
+    0 4 8 C 0 4 8 C 0
+    1 5 9 D 1 5 9 D 1
+    2 6 A E 2 6 A E 2
+    3 7 B F 3 7 B F 3 ... |  tag    0 0 0 0 0 0 0 0 0 ...
+set 0 1 2 3 0 1 2 3 0 ... |  block  0 1 2 3 4 5 6 7 8 ...
+mem 0 1 2 3 4 5 6 7 8 ... |  mem    0 1 2 3 4 5 6 7 8 ...
+
+The tag must still hold the high order bits.
+
+Victim replacement is harder now. Before, a direct mapped cache would always
+replace the one block that the new cache data would go in. Now there are n
+such blocks to make a choice in. Some choices include LeastRecentlyUsed,
+LeastFrequentlyUsed, FIFO, Random, ...
+
+e.g. to find 0101F0F0 in a 64KB=1KW cache with 16 sets of 64W, 
+byte 0101F0F0 is word 407C3 (/64), which is in set 3 (%16) with tag 407C.
+It shares a set with words 407C3 + 10n where n is an integer.
+
+If the cache is multiword, that is just another layer of division:
+If there are 16 words in a block, (so 4 blocks in a set)
+Word 407C could be in block C, which is in set 3. Continue as before.
